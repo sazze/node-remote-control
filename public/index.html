@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>index</title>
+    <link type="text/css" rel="stylesheet" href="/css/jquery.terminal.css" />
+    <link type="text/css" rel="stylesheet" href="/css/terminal.css" />
+</head>
+<body>
+<div id="terminal"></div>
+
+<script src="/js/engine.io-1.5.1.js"></script>
+<script src="/js/jquery-2.1.4.min.js"></script>
+<script src="/js/jquery.mousewheel-3.1.12.min.js"></script>
+<script src="/js/jquery.terminal-0.8.8.min.js"></script>
+<script>
+    jQuery(function ($, undefined) {
+        $(document).ready(function () {
+            var socket = null;
+            var reconnectInterval = 100;
+
+            var terminal = $('#terminal').terminal(function (command, term) {
+                if (command == '') {
+                    return;
+                }
+
+                // send the command to the server and show the result
+                term.pause();
+
+                socket.send(JSON.stringify({command: command}));
+            }, {
+                height: $('body').innerHeight(),
+                width: $('body').innerWidth(),
+                prompt: '#> ',
+                onInit: terminalInit
+            });
+
+            function terminalInit(term) {
+                $(window).on('resizeEnd', function () {
+                    term.resize($('body').innerWidth(), $('body').innerHeight());
+                });
+
+                $(window).on('resize', function () {
+                    if (this.resizeTO) {
+                        clearTimeout(this.resizeTO);
+                    }
+
+                    this.resizeTO = setTimeout(function () {
+                        $(this).trigger('resizeEnd');
+                    }, 500);
+                });
+
+                $(window).on('unload', function () {
+                    term.purge();
+                });
+
+                $(window).on('beforeunload', function () {
+                    term.purge();
+                });
+
+                term.clear();
+
+                connectToServer(term, true);
+            }
+
+            function connectToServer(term, clear) {
+                if (!term.paused()) {
+                    term.pause();
+                }
+
+                term.echo('connecting to server...');
+
+                socket = eio('wss://' + window.location.host, {transports: ['websocket'], rememberUpgrade: true});
+
+                socket.on('open', function () {
+                    socket.on('message', function (data) {
+                        if (typeof data === 'string') {
+                            try {
+                                data = JSON.parse(data);
+                            } catch (e) {
+                                term.error(e);
+                                return;
+                            }
+                        }
+
+                        if (data.id && data.id == 'prompt' && data.exitCode === 0 && data.stdout) {
+                            term.set_prompt('[' + data.stdout.trim() + ']#> ');
+                            // reset the reconnectInterval
+                            reconnectInterval = 10;
+                        } else {
+                            if (data.exitCode && data.exitCode !== 0) {
+                                term.error('command exited with code: ' + data.exitCode + ' and signal: ' + data.signal);
+                            }
+
+                            if (data.stderr) {
+                                term.error(data.stderr.trim());
+                            }
+
+                            if (data.stdout) {
+                                term.echo(data.stdout.trim());
+                            }
+                        }
+
+                        if (term.paused()) {
+                            term.resume();
+                        }
+                    });
+
+                    if (clear) {
+                        term.clear();
+                    }
+
+                    socket.send(JSON.stringify({id: 'prompt', command: 'host=`hostname -s`; who=`whoami`; echo "${who}@${host}"'}));
+                });
+
+                socket.on('close', function () {
+                    term.pause();
+
+                    if (reconnectInterval > 3000) {
+                        term.error('connection to server lost.  Will retry in ' + Math.round(reconnectInterval / 1000) + ' seconds.');
+                    }
+
+                    setTimeout(function () {
+                        connectToServer(term)
+                    }, reconnectInterval);
+
+                    if (reconnectInterval < 600000) {
+                        reconnectInterval = reconnectInterval * 2;
+                    }
+                });
+
+                socket.on('error', function (err) {
+                    term.error(err);
+                });
+            }
+        });
+    });
+</script>
+</body>
+</html>
