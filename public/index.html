@@ -130,7 +130,7 @@
                 });
 
                 socket.on('error', function (err) {
-                    term.error(err);
+                    term.error(err.stack || err.message || err);
                 });
             }
         });
