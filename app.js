@@ -17,7 +17,13 @@ var debug = require('debug')('main');
 var options = {};
 
 if (!_.isUndefined(argv.help) && argv.help) {
-  console.log('pass the --configFile option to load options from a JSON formatted file (full path to file is recommended)');
+  console.log('    pass the --configFile option to load options from a JSON formatted file (full path to file is recommended)');
+  process.exit(0);
+}
+
+if (!_.isUndefined(argv.version) && argv.version) {
+  console.log('    version: ' + require('./package.json').version);
+  console.log('    nodejs: ' + process.version);
   process.exit(0);
 }
 
