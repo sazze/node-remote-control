@@ -25,7 +25,7 @@ var options = {
 
 console.log(options);
 
-var socket = client('wss://127.0.0.1:8080', options);
+var socket = client('wss://127.0.0.1:4515', options);
 
 socket.on('open', function () {
   console.log('socket open');
