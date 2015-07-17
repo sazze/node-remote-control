@@ -24,6 +24,22 @@ How to package
 
 `npm install -g nar`
 
+### Patch engine.io-client
+
+If your version of engine.io-client is <=1.5.2, it must be patched.
+
+First update engine.io-client to version 1.5.2, then follow the steps below:
+
+```bash
+cd node_modules/engine.io-client
+patch -p1 < ../../build/patches/engine.io-client/1.5.2-master-2015-07-16.patch
+#
+# when prompted for files to modify, just hit enter and then
+# select 'Y' to skip the file
+#
+npm install
+```
+
 ### Create Packages
 
 Mac OS:
@@ -52,19 +68,22 @@ The configuration file understands the following options:
 
 * `port`: the port to listen on (default: `4515`)
 * `host`: the interface to bind to (default: `::`)
-* `caUrl`: the URL to load the ca cert from (default: `null`)
-* `crlUrl`: the URL to load the crl from (default: `null`)
-* `ca`: the ca cert (default: `null`)
-* `crl`: the crl (default: `null`)
+* `certDir`: the directory where authorized users' public keys are stored (default: `/etc/rc/certs`)
 * `ciphers`: the list of cyphers to use
 * `engineOptions`:
     * `pingTimeout`: ping timeout in ms (default: `5000`)
     * `pingInterval`: pint interval in ms (default: `1000`)
 * `pidFile`: the pid file to write (default: `null`)
 
-The server authenticates clients by requiring that they provide a cert that is signed by the ca specified in the `caUrl` or `ca` options.
+The server authenticates clients by requiring that they provide a signature in the `Authorization` header on the initial upgrade request.
 
-If `caUrl` or `crlUrl` options are specified, the resource is downloaded from the URL provided on every request to the server.
+The signature header should be in the following format:
+
+`Authorization: RC <name>;<iso_8601_timestamp>;<signature>`
+
+* `<name>`: the server will verfiy the signature using a certificate stored in /`certDir`/`<name>` on the server
+* `<iso_8601_timestamp>`: an `ISO-8601` formatted timestamp.  This is the data that has been signed
+* `<sig>`: a `RSA-SHA256` signature in `base64` format
 
 ### Environment Variables
 

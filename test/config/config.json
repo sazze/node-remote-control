@@ -1,4 +1,3 @@
 {
-  "caUrl": "http://c3.ops.sazze.com/cert/ca.crt",
-  "crlUrl": "http://c3.ops.sazze.com/cert/crl.pem"
+  "publicKeyDir": "/tmp/rcPubKeys"
 }

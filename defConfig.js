@@ -6,10 +6,7 @@
 module.exports = {
   port: 4515,
   host: '::',
-  caUrl: null,
-  crlUrl: null,
-  ca: null,
-  crl: null,
+  certDir: '/etc/rc/certs',
   ciphers: 'EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH !aNULL !eNULL !LOW !3DES !MD5 !EXP !PSK !SRP !DSS !RC4',
   engineOptions: {
     pingTimeout: 5000,
