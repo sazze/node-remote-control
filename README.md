@@ -24,22 +24,6 @@ How to package
 
 `npm install -g nar`
 
-### Patch engine.io-client
-
-If your version of engine.io-client is <=1.5.2, it must be patched.
-
-First update engine.io-client to version 1.5.2, then follow the steps below:
-
-```bash
-cd node_modules/engine.io-client
-patch -p1 < ../../package/patches/engine.io-client/1.5.2-master-2015-07-16.patch
-#
-# when prompted for files to modify, just hit enter and then
-# select 'Y' to skip the file
-#
-npm install
-```
-
 ### Create Packages
 
 Mac OS:
@@ -88,3 +72,26 @@ The signature header should be in the following format:
 ### Environment Variables
 
 * `DEBUG`: sets the level(s) for logging (default: `error,warn,info`).  `main` and `server` levels are also available for verbose logging.
+
+Testing
+-------------------
+
+You can test client actions with `test/scripts/client.js`
+
+To do so, engine.io-client may need to be patched.
+
+### Patch engine.io-client
+
+If your version of engine.io-client is <=1.5.2, it must be patched.
+
+First update engine.io-client to version 1.5.2, then follow the steps below:
+
+```bash
+cd node_modules/engine.io-client
+patch -p1 < ../../package/patches/engine.io-client/1.5.2-master-2015-07-16.patch
+#
+# when prompted for files to modify, just hit enter and then
+# select 'Y' to skip the file
+#
+npm install
+```
