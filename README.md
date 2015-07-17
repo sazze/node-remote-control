@@ -32,7 +32,7 @@ First update engine.io-client to version 1.5.2, then follow the steps below:
 
 ```bash
 cd node_modules/engine.io-client
-patch -p1 < ../../build/patches/engine.io-client/1.5.2-master-2015-07-16.patch
+patch -p1 < ../../package/patches/engine.io-client/1.5.2-master-2015-07-16.patch
 #
 # when prompted for files to modify, just hit enter and then
 # select 'Y' to skip the file
