@@ -1,0 +1,58 @@
+#!/bin/bash
+#
+#	/etc/rc.d/init.d/remote-control
+#
+#	This is a service that allows command line commands to be run on the host it is running on.
+#
+# chkconfig: 2345 20 80
+# description: This is a service that allows command line commands to be run on the host it is running on.
+# processname: remote-control
+# config: /etc/rc/config.json
+# pidfile: /var/run/remote-control.pid
+#
+
+# Source function library.
+. /etc/init.d/functions
+
+$PROGNAME=remote-control
+$PROG=/usr/local/bin/$PROGNAME
+$PIDFILE=/var/run/${PROGNAME}.pid
+$CONFIGFILE=/etc/$PROGNAME/config.json
+$LOCKFILE=/var/lock/subsys/$PROGNAME
+
+start() {
+	echo -n "Starting $PROGNAME: "
+	daemon $PROG --configFile $CONFIGFILE
+	ret=$?
+	touch $LOCKFILE
+	return $ret
+}
+
+stop() {
+	echo -n "Shutting down $PROGNAME: "
+	killproc -p $PIDFILE $PROG
+	ret=$?
+	rm -f $LOCKFILE
+	return $ret
+}
+
+case "$1" in
+    start)
+	start
+	;;
+    stop)
+	stop
+	;;
+    status)
+	status -p $PIDFILE -l $LOCKFILE
+	;;
+    restart)
+    stop
+	start
+	;;
+    *)
+	echo "Usage: <servicename> {start|stop|status|reload|restart[|probe]"
+	exit 1
+	;;
+esac
+exit $?

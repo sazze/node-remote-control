@@ -1,0 +1,795 @@
+diff --git a/.zuul.yml b/.zuul.yml
+index 5337ec7..22cd285 100644
+--- a/.zuul.yml
++++ b/.zuul.yml
+@@ -1,5 +1,9 @@
+ ui: mocha-bdd
+ server: ./test/support/server.js
++tunnel:
++  type: ngrok
++  authtoken: JnawIksKFkXQzrxSjIjQ
++  proto: tcp
+ browsers:
+   - name: chrome
+     version: 29..latest
+diff --git a/LICENSE b/LICENSE
+new file mode 100644
+index 0000000..b248ba1
+--- /dev/null
++++ b/LICENSE
+@@ -0,0 +1,22 @@
++(The MIT License)
++
++Copyright (c) 2014-2015 Automattic <dev@cloudup.com>
++
++Permission is hereby granted, free of charge, to any person obtaining
++a copy of this software and associated documentation files (the
++'Software'), to deal in the Software without restriction, including
++without limitation the rights to use, copy, modify, merge, publish,
++distribute, sublicense, and/or sell copies of the Software, and to
++permit persons to whom the Software is furnished to do so, subject to
++the following conditions:
++
++The above copyright notice and this permission notice shall be
++included in all copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
++EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
++MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
++IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
++CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
++TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
++SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+diff --git a/README.md b/README.md
+index 9d4f6a2..a33fe54 100644
+--- a/README.md
++++ b/README.md
+@@ -1,10 +1,10 @@
+
+ # Engine.IO client
+
+-[![Build Status](https://secure.travis-ci.org/Automattic/engine.io-client.png)](http://travis-ci.org/Automattic/engine.io-client)
++[![Build Status](https://secure.travis-ci.org/socketio/engine.io-client.png)](http://travis-ci.org/socketio/engine.io-client)
+ [![NPM version](https://badge.fury.io/js/engine.io-client.png)](http://badge.fury.io/js/engine.io-client)
+
+-This is the client for [Engine.IO](http://github.com/automattic/engine.io),
++This is the client for [Engine.IO](http://github.com/socketio/engine.io),
+ the implementation of transport-based cross-browser/cross-device
+ bi-directional communication layer for [Socket.IO](http://github.com/automattic/socket.io).
+
+@@ -102,6 +102,22 @@ socket.on('open', function(){
+ });
+ ```
+
++### Node.js with extraHeaders
++```js
++var opts = {
++  extraHeaders: {
++    'X-Custom-Header-For-My-Project': 'my-secret-access-token',
++    'Cookie': 'user_session=NI2JlCKF90aE0sJZD9ZzujtdsUqNYSBYxzlTsvdSUe35ZzdtVRGqYFr0kdGxbfc5gUOkR9RGp20GVKza; path=/; expires=Tue, 07-Apr-2015 18:18:08 GMT; secure; HttpOnly'
++  }
++};
++
++var socket = require('engine.io-client')('ws://localhost', opts);
++socket.on('open', function(){
++  socket.on('message', function(data){});
++  socket.on('close', function(){});
++});
++```
++
+ ## Features
+
+ - Lightweight
+@@ -155,6 +171,10 @@ Exposed as `eio` in the browser standalone build.
+   - Fired if an error occurs with a transport we're trying to upgrade to.
+ - `upgrade`
+   - Fired upon upgrade success, after the new transport is set
++- `ping`
++  - Fired upon _flushing_ a ping packet (ie: actual packet write out)
++- `pong`
++  - Fired upon receiving a pong packet.
+
+ #### Methods
+
+@@ -199,11 +219,17 @@ Exposed as `eio` in the browser standalone build.
+       - `ca` (`String`|`Array`): An authority certificate or array of authority certificates to check the remote host against.. Can be used in Node.js client environment to manually specify certificate information.
+       - `ciphers` (`String`): A string describing the ciphers to use or exclude. Consult the [cipher format list](http://www.openssl.org/docs/apps/ciphers.html#CIPHER_LIST_FORMAT) for details on the format.. Can be used in Node.js client environment to manually specify certificate information.
+       - `rejectUnauthorized` (`Boolean`): If true, the server certificate is verified against the list of supplied CAs. An 'error' event is emitted if verification fails. Verification happens at the connection level, before the HTTP request is sent. Can be used in Node.js client environment to manually specify certificate information.
++      - `perMessageDeflate` (`Object|Boolean`): parameters of the WebSocket permessage-deflate extension
++        (see [ws module](https://github.com/einaros/ws) api docs). Set to `false` to disable. (`true`)
++      - `extraHeaders` (`Object`): Headers that will be passed for each request to the server (via xhr-polling and via websockets). These values then can be used during handshake or for special proxies. Can only be used in Node.js client environment.
+ - `send`
+     - Sends a message to the server
+     - **Parameters**
+       - `String` | `ArrayBuffer` | `ArrayBufferView` | `Blob`: data to send
++      - `Object`: optional, options object
+       - `Function`: optional, callback upon `drain`
++    - **Options**
++      - `compress` (`Boolean`): whether to compress sending data. This option is ignored and forced to be `true` on the browser. (`true`)
+ - `close`
+     - Disconnects the client.
+
+@@ -220,7 +246,7 @@ The transport class. Private. _Inherits from EventEmitter_.
+ ## Tests
+
+ `engine.io-client` is used to test
+-[engine](http://github.com/automattic/engine.io). Running the `engine.io`
++[engine](http://github.com/socketio/engine.io). Running the `engine.io`
+ test suite ensures the client works and vice-versa.
+
+ Browser tests are run using [zuul](https://github.com/defunctzombie/zuul). You can
+@@ -247,7 +273,7 @@ To contribute patches, run tests or benchmarks, make sure to clone the
+ repository:
+
+ ```bash
+-git clone git://github.com/automattic/engine.io-client.git
++git clone git://github.com/socketio/engine.io-client.git
+ ```
+
+ Then:
+diff --git a/lib/socket.js b/lib/socket.js
+index f414b04..620cbb6 100644
+--- a/lib/socket.js
++++ b/lib/socket.js
+@@ -55,14 +55,21 @@ function Socket(uri, opts){
+     (global.location && 'https:' == location.protocol);
+
+   if (opts.host) {
+-    var pieces = opts.host.split(':');
+-    opts.hostname = pieces.shift();
+-    if (pieces.length) {
+-      opts.port = pieces.pop();
+-    } else if (!opts.port) {
+-      // if no port is specified manually, use the protocol default
+-      opts.port = this.secure ? '443' : '80';
++    var match = opts.host.match(/(\[.+\])(.+)?/)
++      , pieces;
++
++    if (match) {
++      opts.hostname = match[1];
++      if (match[2]) opts.port = match[2].slice(1);
++    } else {
++      pieces = opts.host.split(':');
++      opts.hostname = pieces.shift();
++      if (pieces.length) opts.port = pieces.pop();
+     }
++
++    // if `host` does not include a port and one is not specified manually,
++    // use the protocol default
++    if (!opts.port) opts.port = this.secure ? '443' : '80';
+   }
+
+   this.agent = opts.agent || false;
+@@ -84,11 +91,11 @@ function Socket(uri, opts){
+   this.transports = opts.transports || ['polling', 'websocket'];
+   this.readyState = '';
+   this.writeBuffer = [];
+-  this.callbackBuffer = [];
+   this.policyPort = opts.policyPort || 843;
+   this.rememberUpgrade = opts.rememberUpgrade || false;
+   this.binaryType = null;
+   this.onlyBinaryUpgrades = opts.onlyBinaryUpgrades;
++  this.perMessageDeflate = false !== opts.perMessageDeflate ? (opts.perMessageDeflate || true) : false;
+
+   // SSL options for Node.js client
+   this.pfx = opts.pfx || null;
+@@ -99,6 +106,14 @@ function Socket(uri, opts){
+   this.ciphers = opts.ciphers || null;
+   this.rejectUnauthorized = opts.rejectUnauthorized || null;
+
++  // other options for Node.js client
++  var freeGlobal = typeof global == 'object' && global;
++  if (freeGlobal.global === freeGlobal) {
++    if (opts.extraHeaders && Object.keys(opts.extraHeaders).length > 0) {
++      this.extraHeaders = opts.extraHeaders;
++    }
++  }
++
+   this.open();
+ }
+
+@@ -170,7 +185,9 @@ Socket.prototype.createTransport = function (name) {
+     cert: this.cert,
+     ca: this.ca,
+     ciphers: this.ciphers,
+-    rejectUnauthorized: this.rejectUnauthorized
++    rejectUnauthorized: this.rejectUnauthorized,
++    perMessageDeflate: this.perMessageDeflate,
++    extraHeaders: this.extraHeaders
+   });
+
+   return transport;
+@@ -195,7 +212,7 @@ Socket.prototype.open = function () {
+   var transport;
+   if (this.rememberUpgrade && Socket.priorWebsocketSuccess && this.transports.indexOf('websocket') != -1) {
+     transport = 'websocket';
+-  } else if (0 == this.transports.length) {
++  } else if (0 === this.transports.length) {
+     // Emit error on next tick so it can be listened to
+     var self = this;
+     setTimeout(function() {
+@@ -278,7 +295,7 @@ Socket.prototype.probe = function (name) {
+     if (failed) return;
+
+     debug('probe transport "%s" opened', name);
+-    transport.send([{ type: 'ping', data: 'probe' }]);
++    transport.send([{ type: 'ping', data: 'probe', options: { compress: true } }]);
+     transport.once('packet', function (msg) {
+       if (failed) return;
+       if ('pong' == msg.type && 'probe' == msg.data) {
+@@ -297,7 +314,7 @@ Socket.prototype.probe = function (name) {
+           cleanup();
+
+           self.setTransport(transport);
+-          transport.send([{ type: 'upgrade' }]);
++          transport.send([{ type: 'upgrade', options: { compress: true } }]);
+           self.emit('upgrade', transport);
+           transport = null;
+           self.upgrading = false;
+@@ -418,12 +435,13 @@ Socket.prototype.onPacket = function (packet) {
+
+       case 'pong':
+         this.setPing();
++        this.emit('pong');
+         break;
+
+       case 'error':
+         var err = new Error('server error');
+         err.code = packet.data;
+-        this.emit('error', err);
++        this.onError(err);
+         break;
+
+       case 'message':
+@@ -495,11 +513,14 @@ Socket.prototype.setPing = function () {
+ /**
+ * Sends a ping packet.
+ *
+-* @api public
++* @api private
+ */
+
+ Socket.prototype.ping = function () {
+-  this.sendPacket('ping');
++  var self = this;
++  this.sendPacket('ping', function(){
++    self.emit('ping');
++  });
+ };
+
+ /**
+@@ -509,21 +530,14 @@ Socket.prototype.ping = function () {
+  */
+
+ Socket.prototype.onDrain = function() {
+-  for (var i = 0; i < this.prevBufferLen; i++) {
+-    if (this.callbackBuffer[i]) {
+-      this.callbackBuffer[i]();
+-    }
+-  }
+-
+   this.writeBuffer.splice(0, this.prevBufferLen);
+-  this.callbackBuffer.splice(0, this.prevBufferLen);
+
+   // setting prevBufferLen = 0 is very important
+   // for example, when upgrading, upgrade packet is sent over,
+   // and a nonzero prevBufferLen could cause problems on `drain`
+   this.prevBufferLen = 0;
+
+-  if (this.writeBuffer.length == 0) {
++  if (0 === this.writeBuffer.length) {
+     this.emit('drain');
+   } else {
+     this.flush();
+@@ -553,13 +567,14 @@ Socket.prototype.flush = function () {
+  *
+  * @param {String} message.
+  * @param {Function} callback function.
++ * @param {Object} options.
+  * @return {Socket} for chaining.
+  * @api public
+  */
+
+ Socket.prototype.write =
+-Socket.prototype.send = function (msg, fn) {
+-  this.sendPacket('message', msg, fn);
++Socket.prototype.send = function (msg, options, fn) {
++  this.sendPacket('message', msg, options, fn);
+   return this;
+ };
+
+@@ -568,19 +583,37 @@ Socket.prototype.send = function (msg, fn) {
+  *
+  * @param {String} packet type.
+  * @param {String} data.
++ * @param {Object} options.
+  * @param {Function} callback function.
+  * @api private
+  */
+
+-Socket.prototype.sendPacket = function (type, data, fn) {
++Socket.prototype.sendPacket = function (type, data, options, fn) {
++  if('function' == typeof data) {
++    fn = data;
++    data = undefined;
++  }
++
++  if ('function' == typeof options) {
++    fn = options;
++    options = null;
++  }
++
+   if ('closing' == this.readyState || 'closed' == this.readyState) {
+     return;
+   }
+
+-  var packet = { type: type, data: data };
++  options = options || {};
++  options.compress = false !== options.compress;
++
++  var packet = {
++    type: type,
++    data: data,
++    options: options
++  };
+   this.emit('packetCreate', packet);
+   this.writeBuffer.push(packet);
+-  this.callbackBuffer.push(fn);
++  if (fn) this.once('flush', fn);
+   this.flush();
+ };
+
+@@ -596,24 +629,6 @@ Socket.prototype.close = function () {
+
+     var self = this;
+
+-    function close() {
+-      self.onClose('forced close');
+-      debug('socket closing - telling transport to close');
+-      self.transport.close();
+-    }
+-
+-    function cleanupAndClose() {
+-      self.removeListener('upgrade', cleanupAndClose);
+-      self.removeListener('upgradeError', cleanupAndClose);
+-      close();
+-    }
+-
+-    function waitForUpgrade() {
+-      // wait for upgrade to finish since we can't send packets while pausing a transport
+-      self.once('upgrade', cleanupAndClose);
+-      self.once('upgradeError', cleanupAndClose);
+-    }
+-
+     if (this.writeBuffer.length) {
+       this.once('drain', function() {
+         if (this.upgrading) {
+@@ -629,6 +644,24 @@ Socket.prototype.close = function () {
+     }
+   }
+
++  function close() {
++    self.onClose('forced close');
++    debug('socket closing - telling transport to close');
++    self.transport.close();
++  }
++
++  function cleanupAndClose() {
++    self.removeListener('upgrade', cleanupAndClose);
++    self.removeListener('upgradeError', cleanupAndClose);
++    close();
++  }
++
++  function waitForUpgrade() {
++    // wait for upgrade to finish since we can't send packets while pausing a transport
++    self.once('upgrade', cleanupAndClose);
++    self.once('upgradeError', cleanupAndClose);
++  }
++
+   return this;
+ };
+
+@@ -660,14 +693,6 @@ Socket.prototype.onClose = function (reason, desc) {
+     clearTimeout(this.pingIntervalTimer);
+     clearTimeout(this.pingTimeoutTimer);
+
+-    // clean buffers in next tick, so developers can still
+-    // grab the buffers on `close` event
+-    setTimeout(function() {
+-      self.writeBuffer = [];
+-      self.callbackBuffer = [];
+-      self.prevBufferLen = 0;
+-    }, 0);
+-
+     // stop event from firing again for transport
+     this.transport.removeAllListeners('close');
+
+@@ -685,6 +710,11 @@ Socket.prototype.onClose = function (reason, desc) {
+
+     // emit close event
+     this.emit('close', reason, desc);
++
++    // clean buffers after, so users can still
++    // grab the buffers on `close` event
++    self.writeBuffer = [];
++    self.prevBufferLen = 0;
+   }
+ };
+
+diff --git a/lib/transport.js b/lib/transport.js
+index 3a544b3..4e0f4a9 100644
+--- a/lib/transport.js
++++ b/lib/transport.js
+@@ -39,6 +39,9 @@ function Transport (opts) {
+   this.ca = opts.ca;
+   this.ciphers = opts.ciphers;
+   this.rejectUnauthorized = opts.rejectUnauthorized;
++
++  // other options for Node.js client
++  this.extraHeaders = opts.extraHeaders;
+ }
+
+ /**
+diff --git a/lib/transports/index.js b/lib/transports/index.js
+index 354f575..4fefcd7 100755
+--- a/lib/transports/index.js
++++ b/lib/transports/index.js
+@@ -2,7 +2,7 @@
+  * Module dependencies
+  */
+
+-var XMLHttpRequest = require('xmlhttprequest');
++var XMLHttpRequest = require('xmlhttprequest-ssl');
+ var XHR = require('./polling-xhr');
+ var JSONP = require('./polling-jsonp');
+ var websocket = require('./websocket');
+diff --git a/lib/transports/polling-xhr.js b/lib/transports/polling-xhr.js
+index b850355..b5e03f0 100755
+--- a/lib/transports/polling-xhr.js
++++ b/lib/transports/polling-xhr.js
+@@ -2,7 +2,7 @@
+  * Module requirements.
+  */
+
+-var XMLHttpRequest = require('xmlhttprequest');
++var XMLHttpRequest = require('xmlhttprequest-ssl');
+ var Polling = require('./polling');
+ var Emitter = require('component-emitter');
+ var inherit = require('component-inherit');
+@@ -43,6 +43,8 @@ function XHR(opts){
+     this.xd = opts.hostname != global.location.hostname ||
+       port != opts.port;
+     this.xs = opts.secure != isSSL;
++  } else {
++    this.extraHeaders = opts.extraHeaders;
+   }
+ }
+
+@@ -83,6 +85,9 @@ XHR.prototype.request = function(opts){
+   opts.ciphers = this.ciphers;
+   opts.rejectUnauthorized = this.rejectUnauthorized;
+
++  // other options for Node.js client
++  opts.extraHeaders = this.extraHeaders;
++
+   return new Request(opts);
+ };
+
+@@ -152,6 +157,9 @@ function Request(opts){
+   this.ciphers = opts.ciphers;
+   this.rejectUnauthorized = opts.rejectUnauthorized;
+
++  // other options for Node.js client
++  this.extraHeaders = opts.extraHeaders;
++
+   this.create();
+ }
+
+@@ -185,6 +193,16 @@ Request.prototype.create = function(){
+   try {
+     debug('xhr open %s: %s', this.method, this.uri);
+     xhr.open(this.method, this.uri, this.async);
++    try {
++      if (this.extraHeaders) {
++        xhr.setDisableHeaderCheck(true);
++        for (var i in this.extraHeaders) {
++          if (this.extraHeaders.hasOwnProperty(i)) {
++            xhr.setRequestHeader(i, this.extraHeaders[i]);
++          }
++        }
++      }
++    } catch (e) {}
+     if (this.supportsBinary) {
+       // This has to be done after open because Firefox is stupid
+       // http://stackoverflow.com/questions/13216903/get-binary-data-with-xmlhttprequest-in-a-firefox-extension
+@@ -328,7 +346,7 @@ Request.prototype.onLoad = function(){
+       if (!this.supportsBinary) {
+         data = this.xhr.responseText;
+       } else {
+-        data = 'ok';
++        data = String.fromCharCode.apply(null, new Uint8Array(this.xhr.response));
+       }
+     }
+   } catch (e) {
+diff --git a/lib/transports/polling.js b/lib/transports/polling.js
+index f76c227..aa39557 100644
+--- a/lib/transports/polling.js
++++ b/lib/transports/polling.js
+@@ -19,7 +19,7 @@ module.exports = Polling;
+  */
+
+ var hasXHR2 = (function() {
+-  var XMLHttpRequest = require('xmlhttprequest');
++  var XMLHttpRequest = require('xmlhttprequest-ssl');
+   var xhr = new XMLHttpRequest({ xdomain: false });
+   return null != xhr.responseType;
+ })();
+diff --git a/lib/transports/websocket.js b/lib/transports/websocket.js
+index 4b6b3bd..624a483 100644
+--- a/lib/transports/websocket.js
++++ b/lib/transports/websocket.js
+@@ -34,6 +34,7 @@ function WS(opts){
+   if (forceBase64) {
+     this.supportsBinary = false;
+   }
++  this.perMessageDeflate = opts.perMessageDeflate;
+   Transport.call(this, opts);
+ }
+
+@@ -72,7 +73,10 @@ WS.prototype.doOpen = function(){
+   var self = this;
+   var uri = this.uri();
+   var protocols = void(0);
+-  var opts = { agent: this.agent };
++  var opts = {
++    agent: this.agent,
++    perMessageDeflate: this.perMessageDeflate
++  };
+
+   // SSL options for Node.js client
+   opts.pfx = this.pfx;
+@@ -82,6 +86,9 @@ WS.prototype.doOpen = function(){
+   opts.ca = this.ca;
+   opts.ciphers = this.ciphers;
+   opts.rejectUnauthorized = this.rejectUnauthorized;
++  if (this.extraHeaders) {
++    opts.headers = this.extraHeaders;
++  }
+
+   this.ws = new WebSocket(uri, protocols, opts);
+
+@@ -143,28 +150,42 @@ if ('undefined' != typeof navigator
+ WS.prototype.write = function(packets){
+   var self = this;
+   this.writable = false;
++
+   // encodePacket efficient as it uses WS framing
+   // no need for encodePayload
+-  for (var i = 0, l = packets.length; i < l; i++) {
+-    parser.encodePacket(packets[i], this.supportsBinary, function(data) {
+-      //Sometimes the websocket has already been closed but the browser didn't
+-      //have a chance of informing us about it yet, in that case send will
+-      //throw an error
+-      try {
+-        self.ws.send(data);
+-      } catch (e){
+-        debug('websocket closed before onclose event');
+-      }
+-    });
++  var total = packets.length;
++  for (var i = 0, l = total; i < l; i++) {
++    (function(packet) {
++      parser.encodePacket(packet, this.supportsBinary, function(data) {
++        //Sometimes the websocket has already been closed but the browser didn't
++        //have a chance of informing us about it yet, in that case send will
++        //throw an error
++        try {
++          if (global.WebSocket && self.ws instanceof global.WebSocket) {
++            // TypeError is thrown when passing the second argument on Safari
++            self.ws.send(data);
++          } else {
++            self.ws.send(data, packet.options);
++          }
++        } catch (e){
++          debug('websocket closed before onclose event');
++        }
++
++        --total || done();
++      });
++    })(packets[i]);
+   }
+
+-  function ondrain() {
+-    self.writable = true;
+-    self.emit('drain');
++  function done(){
++    self.emit('flush');
++
++    // fake drain
++    // defer to next tick to allow Socket to clear writeBuffer
++    setTimeout(function(){
++      self.writable = true;
++      self.emit('drain');
++    }, 0);
+   }
+-  // fake drain
+-  // defer to next tick to allow Socket to clear writeBuffer
+-  setTimeout(ondrain, 0);
+ };
+
+ /**
+diff --git a/package.json b/package.json
+index ae40e9a..8dfb344 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "engine.io-client",
+   "description": "Client for the realtime Engine",
+   "version": "1.5.2",
++  "license": "MIT",
+   "homepage": "http://socket.io",
+   "contributors": [
+     {
+@@ -22,12 +23,14 @@
+     }
+   ],
+   "dependencies": {
+-    "component-emitter": "1.1.2",
+-    "component-inherit": "0.0.3",
+-    "debug": "1.0.4",
+-    "engine.io-parser": "1.2.1",
+     "has-cors": "1.0.3",
++    "ws": "0.7.2",
++    "xmlhttprequest-ssl": "1.5.1",
++    "component-emitter": "1.1.2",
+     "indexof": "0.0.1",
++    "engine.io-parser": "1.2.1",
++    "debug": "2.1.3",
++    "parseuri": "0.0.4",
+     "parsejson": "0.0.1",
+     "parseqs": "0.0.2",
+     "parseuri": "0.0.4",
+@@ -44,13 +47,14 @@
+     "express": "3.4.8",
+     "istanbul": "0.2.3",
+     "mocha": "1.16.2",
+-    "zuul": "rase-/zuul#9d3a02"
++    "zuul": "1.17.1",
++    "zuul-ngrok": "2.0.0"
+   },
+   "scripts": {
+     "test": "make test"
+   },
+   "browser": {
+-    "xmlhttprequest": "./lib/xmlhttprequest.js"
++    "xmlhttprequest-ssl": "./lib/xmlhttprequest.js"
+   },
+   "repository": {
+     "type": "git",
+diff --git a/test/engine.io-client.js b/test/engine.io-client.js
+index 8203265..0fdce76 100644
+--- a/test/engine.io-client.js
++++ b/test/engine.io-client.js
+@@ -9,39 +9,69 @@ describe('engine.io-client', function () {
+   });
+
+   it('should properly parse http uri without port', function(done) {
+-    var server = eio('http://localhost');
+-    server.on('close', function() {
++    var client = eio('http://localhost');
++    client.on('close', function() {
+       done();
+     });
+-    expect(server.port).to.be('80');
+-    server.close();
++    expect(client.port).to.be('80');
++    client.close();
+   });
+
+   it('should properly parse https uri without port', function(done) {
+-    var server = eio('https://localhost');
+-    server.on('close', function() {
++    var client = eio('https://localhost');
++    client.on('close', function() {
+       done();
+     });
+-    expect(server.port).to.be('443');
+-    server.close();
++    expect(client.port).to.be('443');
++    client.close();
+   });
+
+   it('should properly parse wss uri without port', function(done) {
+-    var server = eio('wss://localhost');
+-    server.on('close', function() {
++    var client = eio('wss://localhost');
++    client.on('close', function() {
+       done();
+     });
+-    expect(server.port).to.be('443');
+-    server.close();
++    expect(client.port).to.be('443');
++    client.close();
+   });
+
+   it('should properly parse wss uri with port', function(done) {
+-    var server = eio('wss://localhost:2020');
+-    server.on('close', function() {
++    var client = eio('wss://localhost:2020');
++    client.on('close', function() {
+       done();
+     });
+-    expect(server.port).to.be('2020');
+-    server.close();
++    expect(client.port).to.be('2020');
++    client.close();
++  });
++
++  it('should properly parse an IPv6 host without port (1/2)', function(done) {
++    var client = eio({ host: '[::1]' });
++    client.on('close', function() {
++      done();
++    });
++    expect(client.hostname).to.be('[::1]');
++    expect(client.port).to.be('80');
++    client.close();
++  });
++
++  it('should properly parse an IPv6 host without port (2/2)', function(done) {
++    var client = eio({ secure: true, host: '[::1]:' });
++    client.on('close', function() {
++      done();
++    });
++    expect(client.hostname).to.be('[::1]');
++    expect(client.port).to.be('443');
++    client.close();
++  });
++
++  it('should properly parse an IPv6 host with port', function(done) {
++    var client = eio({ host: '[::1]:8080' });
++    client.on('close', function() {
++      done();
++    });
++    expect(client.hostname).to.be('[::1]');
++    expect(client.port).to.be('8080');
++    client.close();
+   });
+
+ });
+diff --git a/test/transport.js b/test/transport.js
+index 878a552..e2dca96 100644
+--- a/test/transport.js
++++ b/test/transport.js
+@@ -177,6 +177,33 @@ if (!env.browser) {
+       });
+       polling.doOpen();
+     });
++
++    describe('for extraHeaders', function () {
++      it('should correctly set them for WebSockets', function () {
++        var headers = {
++          'X-Custom-Header-For-My-Project': 'my-secret-access-token',
++          'Cookie': 'user_session=NI2JlCKF90aE0sJZD9ZzujtdsUqNYSBYxzlTsvdSUe35ZzdtVRGqYFr0kdGxbfc5gUOkR9RGp20GVKza; path=/; expires=Tue, 07-Apr-2015 18:18:08 GMT; secure; HttpOnly'
++        };
++        var polling = new eio.transports.websocket({
++            path: '/engine.io'
++          , hostname: 'localhost'
++          , extraHeaders: headers
++        });
++        expect(polling.extraHeaders).to.equal(headers);
++      });
++      it('should correctly set them for XMLHttpRequest', function () {
++        var headers = {
++          'X-Custom-Header-For-My-Project': 'my-secret-access-token',
++          'Cookie': 'user_session=NI2JlCKF90aE0sJZD9ZzujtdsUqNYSBYxzlTsvdSUe35ZzdtVRGqYFr0kdGxbfc5gUOkR9RGp20GVKza; path=/; expires=Tue, 07-Apr-2015 18:18:08 GMT; secure; HttpOnly'
++        };
++        var polling = new eio.transports.polling({
++            path: '/engine.io'
++          , hostname: 'localhost'
++          , extraHeaders: headers
++        });
++        expect(polling.extraHeaders).to.equal(headers);
++      });
++    });
+   });
+ }

@@ -4,56 +4,62 @@
  */
 
 var client = require('engine.io-client');
-var https = require('https');
-var os = require('os');
 var protocol = require('sz-rc-protocol');
-var fs = require('fs');
 
 var Message = protocol.Message;
 var Response = protocol.Response;
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = 0;
 
-var options = {
-  rejectUnauthorized: false,
-  rememberUpgrade: true,
-  key: fs.readFileSync(__dirname + '/../../../../../../vpn/c1.cs1.sazze.com/cthayer.key'),
-  cert: fs.readFileSync(__dirname + '/../../../../../../vpn/c1.cs1.sazze.com/cthayer.crt'),
-  transports: ['websocket']
-};
+var name = 'cthayer';
 
+protocol.Auth.createSig(name, __dirname + '/../../../../../../vpn/c1.cs1.sazze.com', function (err, authHeader) {
+  if (err) {
+    console.log(err.stack || err.message || err);
+    process.exit(1);
+  }
 
-console.log(options);
+  var options = {
+    rejectUnauthorized: false,
+    rememberUpgrade: true,
+    transports: ['websocket'],
+    extraHeaders: {
+      authorization: authHeader
+    }
+  };
 
-var socket = client('wss://127.0.0.1:8080', options);
+  console.log(options);
 
-socket.on('open', function () {
-  console.log('socket open');
+  var socket = client('wss://127.0.0.1:4515', options);
 
-  var message = new Message();
+  socket.on('open', function () {
+    console.log('socket open');
 
-  message.command = 'echo "Hello World!"';
-  //message.args = ['"Hello World!"'];
+    var message = new Message();
 
-  socket.send(JSON.stringify(message));
-});
+    message.command = 'echo "Hello World!"';
+    //message.args = ['"Hello World!"'];
 
-socket.on('message', function (data) {
-  console.log(data);
-});
+    socket.send(JSON.stringify(message));
+  });
 
-socket.on('error', function (err) {
-  console.log(err);
-});
+  socket.on('message', function (data) {
+    console.log(data);
+  });
 
-socket.on('close', function () {
-  console.log('socket close');
-});
+  socket.on('error', function (err) {
+    console.log(err);
+  });
 
-socket.on('pong', function () {
-  console.log('pong');
-});
+  socket.on('close', function () {
+    console.log('socket close');
+  });
 
-socket.on('ping', function () {
-  console.log('ping');
+  socket.on('pong', function () {
+    console.log('pong');
+  });
+
+  socket.on('ping', function () {
+    console.log('ping');
+  });
 });
