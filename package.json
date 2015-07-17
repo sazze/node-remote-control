@@ -1,6 +1,6 @@
 {
   "name": "remote-control",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "service that allows remote control of the machine running it",
   "main": "app.js",
   "publishConfig": {
