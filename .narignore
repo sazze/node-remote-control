@@ -1,3 +1,5 @@
 test
 *.nar
+.nar
 !.narignore
+package
