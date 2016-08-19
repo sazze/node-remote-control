@@ -80,7 +80,7 @@ You can test client actions with `test/scripts/client.js`
 
 To do so, engine.io-client may need to be patched.
 
-### Patch engine.io-client
+### Patch engine.io-client (only for versions of remote-control <= 1.0.0)
 
 If your version of engine.io-client is <=1.5.2, it must be patched.
 
