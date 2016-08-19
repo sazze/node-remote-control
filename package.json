@@ -21,7 +21,7 @@
   "license": "Copyright 2015 Sazze, Inc.  All rights reserved.",
   "dependencies": {
     "debug": "^2.1.3",
-    "engine.io": "^1.5.1",
+    "engine.io": "^1.6.11",
     "lodash": "^3.8.0",
     "minimist": "^1.1.1",
     "pem": "^1.7.2",
@@ -29,7 +29,7 @@
     "sz-rc-protocol": "=1.0.0"
   },
   "devDependencies": {
-    "engine.io-client": "^1.5.1"
+    "engine.io-client": "^1.6.11"
   },
   "archive": {
     "dependencies": true,
