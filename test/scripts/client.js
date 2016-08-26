@@ -4,16 +4,16 @@
  */
 
 var client = require('engine.io-client');
-var protocol = require('sz-rc-protocol');
+var protocol = require('@sazze/rc-protocol');
 
 var Message = protocol.Message;
 var Response = protocol.Response;
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = 0;
 
-var name = 'cthayer';
+var name = process.env.SZ_RC_CERT_NAME;
 
-protocol.Auth.createSig(name, __dirname + '/../../../../../../vpn/c1.cs1.sazze.com', function (err, authHeader) {
+protocol.Auth.createSig(name, process.env.SZ_RC_CERT_DIR, function (err, authHeader) {
   if (err) {
     console.log(err.stack || err.message || err);
     process.exit(1);

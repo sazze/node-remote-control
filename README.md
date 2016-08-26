@@ -7,16 +7,90 @@ It is distributed as a self contained package with all dependencies included.
 
 **It is not required to install nodejs on the host system.**
 
+Clients
+-------------------
+
+[rc-client](https://github.com/sazze/node-rc-client) is the official client library for interacting with this service.
+
 Installation
 -------------------
+**!! DO NOT INSTALL THIS PACKAGE VIA NPM !!**
+
 **RPM:**
 
 `yum install remote-control`
 
+*Note: creation of an RPM package is still on the TODO list
+
 **Other:**
 
-* Download the `remote-control` NAR file appropriate for your system (linux/MacOS(darwin))
+* Download the `remote-control` NAR file appropriate for your system (linux/MacOS(darwin)) from the [releases](https://github.com/sazze/node-remote-control/releases)
 * Make the downloaded file executable
+
+**Example Init Script (RedHat/Centos):**
+
+```bash
+#!/bin/bash
+#
+#	/etc/rc.d/init.d/rc
+#
+#	This is a service that allows command line commands to be run on the host it is running on.
+#
+# chkconfig: 2345 20 80
+# description: This is a service that allows command line commands to be run on the host it is running on.
+# processname: rc
+# config: /etc/rc/config.json
+# pidfile: /var/run/rc.pid
+#
+
+# Source function library.
+. /etc/init.d/functions
+
+PROGNAME=rc
+PROG=/usr/local/sbin/$PROGNAME
+PIDFILE=/var/run/${PROGNAME}.pid
+CONFIGFILE=/etc/$PROGNAME/config.json
+LOCKFILE=/var/lock/subsys/$PROGNAME
+
+start() {
+	echo -n "Starting $PROGNAME: "
+	daemon $PROG --configFile $CONFIGFILE
+	ret=$?
+	echo ""
+	touch $LOCKFILE
+	return $ret
+}
+
+stop() {
+	echo -n "Shutting down $PROGNAME: "
+	killproc -p $PIDFILE $PROG
+	ret=$?
+	echo ""
+	rm -f $LOCKFILE
+	return $ret
+}
+
+case "$1" in
+    start)
+	start
+	;;
+    stop)
+	stop
+	;;
+    status)
+	status -p $PIDFILE -l $LOCKFILE
+	;;
+    restart)
+    stop
+	start
+	;;
+    *)
+	echo "Usage: <servicename> {start|stop|status|reload|restart[|probe]"
+	exit 1
+	;;
+esac
+exit $?
+```
 
 How to package
 -------------------
@@ -65,7 +139,7 @@ The signature header should be in the following format:
 
 `Authorization: RC <name>;<iso_8601_timestamp>;<signature>`
 
-* `<name>`: the server will verfiy the signature using a certificate stored in /`certDir`/`<name>` on the server
+* `<name>`: the server will verfiy the signature using a certificate stored in `<certDir>/<name>.key` on the server
 * `<iso_8601_timestamp>`: an `ISO-8601` formatted timestamp.  This is the data that has been signed
 * `<sig>`: a `RSA-SHA256` signature in `base64` format
 
@@ -95,3 +169,19 @@ patch -p1 < ../../package/patches/engine.io-client/1.5.2-master-2015-07-16.patch
 #
 npm install
 ```
+
+### Environment Variables
+
+* `SZ_RC_CERT_NAME`: the name of the cert for the client to use for authorization (see `name` in the config options)
+* `SZ_RC_CERT_DIR`: the path to the directory that contains the cert
+
+License
+-------------------
+
+ISC License (ISC)
+
+Copyright (c) 2016, Sazze, Inc.
+
+Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted, provided that the above copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
