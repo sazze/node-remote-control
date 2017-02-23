@@ -102,12 +102,30 @@ How to package
 
 Mac OS:
 
+remote-control version >= 1.1.0:
+
+```
+nar create --executable --os darwin --arch x86 --node 6.10.0
+nar create --executable --os darwin --arch x64 --node 6.10.0
+```
+
+remote-control version <= 1.0.0:
+
 ```
 nar create --executable --os darwin --arch x86 --node 0.12.7
 nar create --executable --os darwin --arch x64 --node 0.12.7
 ```
 
 Linux:
+
+remote-control version >= 1.1.0:
+
+```
+nar create --executable --os linux --arch x86 --node 6.10.0
+nar create --executable --os linux --arch x64 --node 6.10.0
+```
+
+remote-control version <= 1.0.0:
 
 ```
 nar create --executable --os linux --arch x86 --node 0.12.7
@@ -132,6 +150,7 @@ The configuration file understands the following options:
     * `pingTimeout`: ping timeout in ms (default: `5000`)
     * `pingInterval`: pint interval in ms (default: `1000`)
 * `pidFile`: the pid file to write (default: `null`)
+* `cmdOptions`: the options used by the child processes running the commands (default: `{}`).  Can be overriden by options set on the message.  See [`child_process_exec_command_options`](https://nodejs.org/api/child_process.html#child_process_child_process_exec_command_options_callback) for valid options
 
 The server authenticates clients by requiring that they provide a signature in the `Authorization` header on the initial upgrade request.
 

@@ -1,0 +1,8 @@
+{
+  "certDir": "/tmp/rcPubKeys",
+  "cmdOptions": {
+    "env": {
+      "PATH": "/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
+    }
+  }
+}

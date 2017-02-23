@@ -37,7 +37,7 @@ protocol.Auth.createSig(name, process.env.SZ_RC_CERT_DIR, function (err, authHea
 
     var message = new Message();
 
-    message.command = 'echo "Hello World!"';
+    message.command = 'echo "Hello World!"; printenv';
     //message.args = ['"Hello World!"'];
 
     socket.send(JSON.stringify(message));
