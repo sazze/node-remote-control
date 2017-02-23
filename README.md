@@ -152,7 +152,11 @@ Testing
 
 You can test client actions with `test/scripts/client.js`
 
-To do so, engine.io-client may need to be patched.
+**NOTES:** 
+
+* set the `SZ_RC_CERT_NAME` and `SZ_RC_CERT_DIR` environment variables before running the client test script.
+* place your public key in `/tmp/rcPubKeys`
+* run the server: `node app.js --configFile ./test/config/config.json`
 
 ### Patch engine.io-client (only for versions of remote-control <= 1.0.0)
 
