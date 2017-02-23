@@ -105,8 +105,7 @@ Mac OS:
 remote-control version >= 1.1.0:
 
 ```
-nar create --executable --os darwin --arch x86 --node 6.10.0
-nar create --executable --os darwin --arch x64 --node 6.10.0
+nar create --executable --os darwin --arch x64 --node 6.9.5
 ```
 
 remote-control version <= 1.0.0:
@@ -121,8 +120,8 @@ Linux:
 remote-control version >= 1.1.0:
 
 ```
-nar create --executable --os linux --arch x86 --node 6.10.0
-nar create --executable --os linux --arch x64 --node 6.10.0
+nar create --executable --os linux --arch x86 --node 6.9.5
+nar create --executable --os linux --arch x64 --node 6.9.5
 ```
 
 remote-control version <= 1.0.0:
