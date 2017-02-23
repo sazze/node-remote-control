@@ -1,35 +1,38 @@
 {
-  "name": "remote-control",
-  "version": "1.0.0",
+  "name": "@sazze/remote-control",
+  "version": "1.1.0",
   "description": "service that allows remote control of the machine running it",
   "main": "app.js",
-  "publishConfig": {
-    "registry": "http://npm.sazze.com/"
-  },
   "scripts": {
     "test": "make test"
   },
+  "engines": {
+    "node": ">=0.12.x"
+  },
   "repository": {
     "type": "git",
-    "url": "http://gitlab.sazze.com/ops/remote-control.git"
+    "url": "http://github.com/sazze/node-remote-control.git"
   },
   "keywords": [
     "remote",
     "control"
   ],
+  "bugs": {
+    "url": "https://github.com/sazze/node-remote-control/issues"
+  },
   "author": "Craig Thayer <cthayer@sazze.com>",
-  "license": "Copyright 2015 Sazze, Inc.  All rights reserved.",
+  "license": "ISC",
   "dependencies": {
     "debug": "^2.1.3",
-    "engine.io": "^1.5.1",
+    "engine.io": "^1.6.11",
     "lodash": "^3.8.0",
     "minimist": "^1.1.1",
     "pem": "^1.7.2",
     "request": "^2.55.0",
-    "sz-rc-protocol": "=1.0.0"
+    "@sazze/rc-protocol": "=1.0.0"
   },
   "devDependencies": {
-    "engine.io-client": "^1.5.1"
+    "engine.io-client": "^1.6.11"
   },
   "archive": {
     "dependencies": true,
