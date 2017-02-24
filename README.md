@@ -53,6 +53,11 @@ CONFIGFILE=/etc/$PROGNAME/config.json
 LOCKFILE=/var/lock/subsys/$PROGNAME
 
 start() {
+    if [ -d /.nar ]; then
+        # ensure clean start (nar agressively caches code)
+        rm -rf /.nar
+    fi
+    
 	echo -n "Starting $PROGNAME: "
 	daemon $PROG --configFile $CONFIGFILE
 	ret=$?
