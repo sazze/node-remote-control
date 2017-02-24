@@ -1,6 +1,6 @@
 {
   "name": "@sazze/remote-control",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "service that allows remote control of the machine running it",
   "main": "app.js",
   "scripts": {
