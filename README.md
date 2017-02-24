@@ -98,6 +98,8 @@ How to package
 
 `npm install -g nar`
 
+**IMPORTANT: DO NOT USE nar@0.3.40** it has a bug where it will not bundle the application files (nar@0.3.39 is known to work)
+
 ### Create Packages
 
 Mac OS:
