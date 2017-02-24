@@ -3,3 +3,4 @@ test
 .nar
 !.narignore
 package
+.idea

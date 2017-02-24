@@ -37,6 +37,6 @@
   "archive": {
     "dependencies": true,
     "devDependencies": false,
-    "binary": true
+    "patterns": ["**"]
   }
 }
